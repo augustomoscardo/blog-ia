@@ -1,72 +1,81 @@
 import http from 'node:http';
-import { createPostDraft } from './services/post-service.js';
+import { closeDatabase, initializeDatabase } from './database.js';
+import { createDraftAndSave, listPosts } from './services/post-service.js';
+import { parseJsonBody, sendJson } from './utils/http.js';
 
-const {  API_PORT, API_HOST, API_PROTOCOL } = process.env;
+const { API_PORT = 3000, API_HOST = 'localhost', API_PROTOCOL = 'http' } = process.env;
 
-const posts = [
-	{ id: 1, title: 'Primeiro post', content: 'Conteúdo do primeiro post.' },
-	{ id: 2, title: 'Segundo post', content: 'Conteúdo do segundo post.' },
-];
-
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
 	const { method, url } = request;
-	const paths = url.split('?').filter(Boolean);
-	const path = paths.at(0) || '/';
-
-	response.setHeader('Content-Type', 'application/json');
+	const [path] = (url || '/').split('?');
 
 	if (path === '/') {
-		return response.end(JSON.stringify({ message: 'Hello World' }));
+		return sendJson(response, 200, { message: 'Hello World' });
 	}
 
 	if (method === 'GET' && path === '/posts') {
-		return response.end(JSON.stringify({ data: posts }));
+		try {
+			const posts = await listPosts();
+			return sendJson(response, 200, { data: posts });
+		} catch (error) {
+			console.error('Error listing posts:', error);
+			return sendJson(response, 500, { message: 'Could not list posts' });
+		}
 	}
 
-	if (method === 'POST' && path === '/posts/draft') {
-		const body = [];
+	if (method === 'POST' && ['/posts/draft', '/posts/drafts'].includes(path)) {
+		let body;
 
-		request.on('data', (chunk) => {
-			body.push(chunk);
-		});
+		try {
+			body = await parseJsonBody(request);
+		} catch (error) {
+			console.error('Error parsing request body:', error);
+			return sendJson(response, 400, { message: 'Invalid JSON' });
+		}
 
-		request.on('end', async () => {
-			let requestBody;
+		const { idea } = body;
 
-			try {
-				requestBody = JSON.parse(Buffer.concat(body).toString());
-			} catch {
-				response.statusCode = 400;
-				return response.end(JSON.stringify({ message: 'Invalid JSON' }));
-			}
+		if (!idea) {
+			return sendJson(response, 400, { message: 'Idea is required' });
+		}
 
-			const { idea } = requestBody;
-
-			if (!idea) {
-				response.statusCode = 400;
-				return response.end(JSON.stringify({ message: 'Idea is required' }));
-			}
-
-			try {
-				const post = await createPostDraft(idea);
-				posts.push(post);
-				response.statusCode = 201;
-				return response.end(JSON.stringify({ data: post }));
-			} catch {
-				response.statusCode = 500;
-				return response.end(JSON.stringify({ message: 'Could not generate post' }));
-			}
-		});
-
-		return;
+		try {
+			const post = await createDraftAndSave(idea);
+			return sendJson(response, 201, { data: post });
+		} catch (error) {
+			console.error('Error generating post draft:', error);
+			return sendJson(response, 500, { message: 'Could not generate post' });
+		}
 	}
 
-	response.statusCode = 404;
-	response.end(JSON.stringify({ message: 'Not Found' }));
+	return sendJson(response, 404, { message: 'Not Found' });
 });
 
-server.listen(API_PORT, API_HOST, () => {
-  console.log(`Server is running on ${API_PROTOCOL}://${API_HOST}:${API_PORT}`);
-	console.log("Press Ctrl+C to stop the server");
-	
-});
+async function shutdown(signal) {
+	console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+	server.close(async () => {
+		try {
+			await closeDatabase();
+			console.log('Database connections closed.');
+			process.exit(0);
+		} catch (error) {
+			console.error('Error closing database connections:', error);
+			process.exit(1);
+		}
+	});
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+initializeDatabase()
+	.then(() => {
+		server.listen(API_PORT, API_HOST, () => {
+			console.log(`Server is running on ${API_PROTOCOL}://${API_HOST}:${API_PORT}`);
+			console.log('Press Ctrl+C to stop the server');
+		});
+	})
+	.catch((error) => {
+		console.error('Could not initialize database:', error.message || error);
+		process.exit(1);
+	});
