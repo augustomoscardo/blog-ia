@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "node --env-file=.env.local --watch src/index.js",
+    "db:init": "node --env-file=.env.local src/database/init.js",
     "env:setup": "cp .env.example .env.local",
     "locals:setup": "npm run env:setup"
   },

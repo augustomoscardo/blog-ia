@@ -1,5 +1,6 @@
 import http from 'node:http';
-import { closeDatabase, initializeDatabase } from './database.js';
+import { initializeDatabase } from './database/init.js';
+import { closeDatabase } from './database/pool.js';
 import { createDraftAndSave, listPosts } from './services/post-service.js';
 import { parseJsonBody, sendJson } from './utils/http.js';
 

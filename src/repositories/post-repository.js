@@ -1,4 +1,4 @@
-import { pool } from '../database.js';
+import { pool } from '../database/pool.js';
 
 export async function findAllPosts() {
 	const { rows } = await pool.query(`
