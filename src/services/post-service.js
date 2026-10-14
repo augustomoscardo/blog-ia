@@ -38,6 +38,10 @@ export async function listPosts() {
   return postRepository.findAllPosts();
 }
 
+export async function findPostById(id) {
+  return postRepository.findPostById(id);
+}
+
 export async function savePost(post) {
   return postRepository.createPost(post);
 }
