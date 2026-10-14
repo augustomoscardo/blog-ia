@@ -1,32 +1,45 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { pool, closeDatabase } from './pool.js';
+import path from "node:path";
+import Postgrator from "postgrator";
+import { pool, closeDatabase } from "./pool.js";
 
-export async function initializeDatabase() {
-	if (!process.env.DATABASE_URL) {
-		throw new Error(
-			'DATABASE_URL environment variable is missing. Please define it in your .env.local file.',
-		);
-	}
+export async function initializeDatabase(target = "") {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL environment variable is missing. Please define it in your .env.local file.",
+    );
+  }
 
-	const schemaPath = new URL('./schema.sql', import.meta.url);
-	const schemaSql = await fs.readFile(schemaPath, 'utf-8');
+  const postgrator = new Postgrator({
+    migrationPattern: path.join(import.meta.dirname, "migrations/*"),
+    driver: "pg",
+    execQuery: (query) => pool.query(query),
+    execSqlScript: (sqlScript) => pool.query(sqlScript),
+  });
 
-	await pool.query(schemaSql);
+  return postgrator.migrate(target);
 }
 
-export { closeDatabase } from './pool.js';
+export { closeDatabase } from "./pool.js";
 
 if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
-	initializeDatabase()
-		.then(async () => {
-			console.log('Database initialized successfully.');
-			await closeDatabase();
-			process.exit(0);
-		})
-		.catch(async (error) => {
-			console.error('Failed to initialize database:', error.message || error);
-			await closeDatabase();
-			process.exit(1);
-		});
+  const target = process.argv[2] ?? "";
+
+  initializeDatabase(target)
+    .then(async (appliedMigrations) => {
+      if (appliedMigrations?.length > 0) {
+        console.log(
+          `Database migrated successfully. Applied ${appliedMigrations.length} migration(s):`,
+        );
+        appliedMigrations.forEach((m) => console.log(` - ${m.name || m.filename}`));
+      } else {
+        console.log("Database is already up to date. No migrations applied.");
+      }
+      await closeDatabase();
+      process.exit(0);
+    })
+    .catch(async (error) => {
+      console.error("Failed to run database migrations:", error.message || error);
+      await closeDatabase();
+      process.exit(1);
+    });
 }
