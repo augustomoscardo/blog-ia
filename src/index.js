@@ -1,52 +1,23 @@
 import http from "node:http";
 import { initializeDatabase } from "./database/init.js";
 import { closeDatabase } from "./database/pool.js";
-import { createDraftAndSave, listPosts } from "./services/post-service.js";
-import { parseJsonBody, sendJson } from "./utils/http.js";
+import { sendJson } from "./utils/http.js";
+import { createRouter } from "./utils/router.js";
+import { registerPostRoutes } from "./routes/posts.js";
 
 const { API_PORT = 3000, API_HOST = "localhost", API_PROTOCOL = "http" } = process.env;
 
+const router = createRouter();
+
+router.get("/", async (_request, response) => {
+  sendJson(response, 200, { message: "Hello World" });
+});
+
+registerPostRoutes(router);
+
 const server = http.createServer(async (request, response) => {
-  const { method, url } = request;
-  const [path] = (url || "/").split("?");
-
-  if (path === "/") {
-    return sendJson(response, 200, { message: "Hello World" });
-  }
-
-  if (method === "GET" && path === "/posts") {
-    try {
-      const posts = await listPosts();
-      return sendJson(response, 200, { data: posts });
-    } catch (error) {
-      console.error("Error listing posts:", error);
-      return sendJson(response, 500, { message: "Could not list posts" });
-    }
-  }
-
-  if (method === "POST" && ["/posts/draft", "/posts/drafts"].includes(path)) {
-    let body;
-
-    try {
-      body = await parseJsonBody(request);
-    } catch (error) {
-      console.error("Error parsing request body:", error);
-      return sendJson(response, 400, { message: "Invalid JSON" });
-    }
-
-    const { idea } = body;
-
-    if (!idea) {
-      return sendJson(response, 400, { message: "Idea is required" });
-    }
-
-    try {
-      const post = await createDraftAndSave(idea);
-      return sendJson(response, 201, { data: post });
-    } catch (error) {
-      console.error("Error generating post draft:", error);
-      return sendJson(response, 500, { message: "Could not generate post" });
-    }
+  if (await router.handle(request, response)) {
+    return;
   }
 
   return sendJson(response, 404, { message: "Not Found" });
