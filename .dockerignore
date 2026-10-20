@@ -1,0 +1,13 @@
+node_modules
+.git
+.env*
+!.env.example
+Dockerfile
+.dockerignore
+docker-compose.yml
+.nvmrc
+lefthook.yml
+.commitlintrc.json
+.oxlintrc.json
+.oxfmtrc.json
+

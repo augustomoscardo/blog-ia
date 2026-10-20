@@ -1,9 +1,10 @@
 import { pool } from "../database/pool.js";
 
-export async function findAllPosts() {
+export async function findAllPosts({ includeAll = false } = {}) {
   const { rows } = await pool.query(`
 		SELECT id, title, content, published_at, created_at, approved_at, rejected_at
 		FROM posts
+		${includeAll ? "" : "WHERE published_at IS NOT NULL AND rejected_at IS NULL"}
 		ORDER BY created_at DESC
 	`);
 
@@ -15,6 +16,30 @@ export async function findPostById(id) {
     `SELECT id, title, content, published_at, created_at, approved_at, rejected_at
 		 FROM posts
 		 WHERE id = $1`,
+    [id],
+  );
+
+  return rows[0];
+}
+
+export async function approvePost(id) {
+  const { rows } = await pool.query(
+    `UPDATE posts
+		 SET approved_at = NOW(), published_at = NOW(), rejected_at = NULL
+		 WHERE id = $1
+		 RETURNING id, title, content, published_at, created_at, approved_at, rejected_at`,
+    [id],
+  );
+
+  return rows[0];
+}
+
+export async function rejectPost(id) {
+  const { rows } = await pool.query(
+    `UPDATE posts
+		 SET rejected_at = NOW(), published_at = NULL, approved_at = NULL
+		 WHERE id = $1
+		 RETURNING id, title, content, published_at, created_at, approved_at, rejected_at`,
     [id],
   );
 

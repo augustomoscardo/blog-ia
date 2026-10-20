@@ -47,6 +47,8 @@ export function createRouter() {
   return {
     get: (path, handler) => addRoute("GET", path, handler),
     post: (path, handler) => addRoute("POST", path, handler),
+    patch: (path, handler) => addRoute("PATCH", path, handler),
+    delete: (path, handler) => addRoute("DELETE", path, handler),
     handle,
   };
 }

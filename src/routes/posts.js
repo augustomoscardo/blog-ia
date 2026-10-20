@@ -1,10 +1,24 @@
-import { createDraftAndSave, listPosts, findPostById } from "../services/post-service.js";
+import {
+  createDraftAndSave,
+  listPosts,
+  findPostById,
+  approvePost,
+  rejectPost,
+} from "../services/post-service.js";
 import { parseJsonBody, sendJson } from "../utils/http.js";
+import { hasValidApiKey } from "../utils/auth.js";
 
 export function registerPostRoutes(router) {
-  router.get("/posts", async (_request, response) => {
+  router.get("/posts", async (request, response) => {
+    const { searchParams } = new URL(request.url || "/", "http://localhost");
+    const includeAll = searchParams.get("include") === "all";
+
+    if (includeAll && !hasValidApiKey(request)) {
+      return sendJson(response, 403, { message: "Forbidden" });
+    }
+
     try {
-      const posts = await listPosts();
+      const posts = await listPosts({ includeAll });
       return sendJson(response, 200, { data: posts });
     } catch (error) {
       console.error("Error listing posts:", error);
@@ -24,6 +38,36 @@ export function registerPostRoutes(router) {
     } catch (error) {
       console.error("Error listing posts:", error);
       return sendJson(response, 500, { message: "Could not list posts" });
+    }
+  });
+
+  router.patch("/posts/:id/approve", async (request, response) => {
+    try {
+      const post = await approvePost(request.params.id);
+
+      if (!post) {
+        return sendJson(response, 404, { message: "Post not found" });
+      }
+
+      return sendJson(response, 200, { data: post });
+    } catch (error) {
+      console.error("Error approving post:", error);
+      return sendJson(response, 500, { message: "Could not approve post" });
+    }
+  });
+
+  router.delete("/posts/:id/reject", async (request, response) => {
+    try {
+      const post = await rejectPost(request.params.id);
+
+      if (!post) {
+        return sendJson(response, 404, { message: "Post not found" });
+      }
+
+      return sendJson(response, 200, { data: post });
+    } catch (error) {
+      console.error("Error rejecting post:", error);
+      return sendJson(response, 500, { message: "Could not reject post" });
     }
   });
 

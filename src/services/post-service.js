@@ -34,12 +34,20 @@ export async function createPostDraft(idea) {
   };
 }
 
-export async function listPosts() {
-  return postRepository.findAllPosts();
+export async function listPosts({ includeAll = false } = {}) {
+  return postRepository.findAllPosts({ includeAll });
 }
 
 export async function findPostById(id) {
   return postRepository.findPostById(id);
+}
+
+export async function approvePost(id) {
+  return postRepository.approvePost(id);
+}
+
+export async function rejectPost(id) {
+  return postRepository.rejectPost(id);
 }
 
 export async function savePost(post) {

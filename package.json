@@ -11,6 +11,8 @@
     "migrate:down": "node --env-file=.env.local node_modules/.bin/postgrator migrate 0",
     "infra:up": "podman compose up -d",
     "infra:down": "podman compose down",
+    "docker:build": "podman build -t blog-ia:latest .",
+    "docker:run": "podman run --rm --name blog-api --network blog-network -p 3333:3333 -e DATABASE_URL=postgresql://postgres:postgres@blog-postgres:5432/blog -e API_KEY=${API_KEY:CHAVESUPERSECRETA} blog-ia:latest",
     "lint": "oxlint .",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
