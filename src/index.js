@@ -1,27 +1,10 @@
-import http from "node:http";
 import { initializeDatabase } from "./database/init.js";
 import { closeDatabase } from "./database/pool.js";
-import { sendJson } from "./utils/http.js";
-import { createRouter } from "./utils/router.js";
-import { registerPostRoutes } from "./routes/posts.js";
+import { createApp } from "./app.js";
 
 const { API_PORT = 3000, API_HOST = "localhost", API_PROTOCOL = "http" } = process.env;
 
-const router = createRouter();
-
-router.get("/", async (_request, response) => {
-  sendJson(response, 200, { message: "Hello World" });
-});
-
-registerPostRoutes(router);
-
-const server = http.createServer(async (request, response) => {
-  if (await router.handle(request, response)) {
-    return;
-  }
-
-  return sendJson(response, 404, { message: "Not Found" });
-});
+const server = createApp();
 
 async function shutdown(signal) {
   console.log(`\nReceived ${signal}. Shutting down gracefully...`);

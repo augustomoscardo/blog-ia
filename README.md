@@ -86,6 +86,12 @@ A API sobe em `http://localhost:3333` (ou conforme `API_PORT`). Ao iniciar, as m
 | `npm run migrate:up` | Aplica todas as migrations |
 | `npm run migrate:down` | Reverte todas as migrations (`migrate 0`) |
 | `npm run lint` | Lint com oxlint |
+| `npm test` | Todos os testes (unit + integração + e2e) |
+| `npm run test:unit` | Apenas testes unitários (sem banco) |
+| `npm run test:integration` | Testes de integração (repositório + PostgreSQL) |
+| `npm run test:e2e` | Testes e2e HTTP com supertest |
+| `npm run test:watch` | Testes unitários em modo watch |
+| `npm run test:coverage` | Todos os testes com relatório de cobertura |
 | `npm run format` / `format:check` | Formata / verifica formatação com oxfmt |
 | `npm run commitlint` | Valida a mensagem do último commit |
 | `npm run docker:build` | Build da imagem `blog-ia:latest` |
@@ -154,6 +160,26 @@ Exemplo de post retornado:
 
 > [!WARNING]
 > Os endpoints `POST /posts/draft`, `PATCH .../approve` e `DELETE .../reject` **não** exigem autenticação no código atual. Em produção, proteja-os (ex.: com `hasValidApiKey` ou um proxy/gateway), pois `draft` consome créditos da OpenAI.
+
+## Testes
+
+Usam o test runner nativo do Node.js (`node --test`) e [supertest](https://github.com/ladjs/supertest) nos testes e2e. Ficam em `test/`:
+
+| Tipo | Pasta | O que cobre |
+| --- | --- | --- |
+| Unitário | `test/unit` | router, helpers HTTP, auth e `post-service` (repositório e Mastra mockados com `mock.module`) |
+| Integração | `test/integration` | `post-repository` e migrations contra um PostgreSQL real |
+| E2E | `test/e2e` | todas as rotas via supertest, com banco real e a chamada à OpenAI mockada |
+
+Os testes de integração e e2e precisam do PostgreSQL no ar (`npm run infra:up`). Eles usam um banco separado (`blog_test`), criado e migrado automaticamente, para não tocar nos dados de desenvolvimento. Para usar outro banco, defina `DATABASE_URL_TEST`. Nenhum teste chama a OpenAI, então `OPENAI_API_KEY` não é necessária.
+
+```bash
+npm run infra:up
+npm test
+```
+
+> [!NOTE]
+> Os testes usam `--experimental-test-module-mocks` (Node 22.3+) e rodam com `--test-concurrency=1`, pois compartilham o mesmo banco.
 
 ## Banco de dados
 
