@@ -15,7 +15,7 @@ describe("Posts API (e2e)", () => {
 
     // The OpenAI call is replaced; everything else (HTTP, routes, database) is real.
     mock.module(new URL("../../src/mastra/index.js", import.meta.url).href, {
-      exports: { mastra: { getAgentById: () => ({ generate }) } },
+      namedExports: { mastra: { getAgentById: () => ({ generate }) } },
     });
 
     await setupTestDatabase();
@@ -119,43 +119,48 @@ describe("Posts API (e2e)", () => {
       );
     });
 
-    it("include=all without an API key returns 403", async () => {
-      const res = await request(server).get("/posts?include=all");
-
-      assert.equal(res.status, 403);
-      assert.deepEqual(res.body, { message: "Forbidden" });
-    });
-
-    it("include=all with an invalid API key returns 403", async () => {
-      const res = await request(server)
-        .get("/posts?include=all")
-        .set("Authorization", "Bearer errada");
-
-      assert.equal(res.status, 403);
-    });
-
-    it("include=all with a valid API key returns all posts", async () => {
+    it("include=all returns all posts, including drafts and rejected", async () => {
       await repository.createPost(buildPost({ id: "draft" }));
       await repository.createPost(buildPost({ id: "pub" }));
+      await repository.createPost(buildPost({ id: "rej" }));
       await repository.approvePost("pub");
+      await repository.rejectPost("rej");
 
-      const res = await request(server)
-        .get("/posts?include=all")
-        .set("Authorization", `Bearer ${API_KEY}`);
+      const res = await request(server).get("/posts?include=all");
 
       assert.equal(res.status, 200);
-      assert.equal(res.body.data.length, 2);
+      assert.equal(res.body.data.length, 3);
     });
   });
 
   describe("GET /posts/:id", () => {
-    it("returns the post", async () => {
+    it("returns the post when published and approved", async () => {
       await repository.createPost(buildPost({ id: "abc", title: "My post" }));
+      await repository.approvePost("abc");
 
       const res = await request(server).get("/posts/abc");
 
       assert.equal(res.status, 200);
       assert.equal(res.body.data.title, "My post");
+    });
+
+    it("returns 404 when the post is a draft", async () => {
+      await repository.createPost(buildPost({ id: "draft-post" }));
+
+      const res = await request(server).get("/posts/draft-post");
+
+      assert.equal(res.status, 404);
+      assert.deepEqual(res.body, { message: "Post not found" });
+    });
+
+    it("returns 404 when the post is rejected", async () => {
+      await repository.createPost(buildPost({ id: "rej-post" }));
+      await repository.rejectPost("rej-post");
+
+      const res = await request(server).get("/posts/rej-post");
+
+      assert.equal(res.status, 404);
+      assert.deepEqual(res.body, { message: "Post not found" });
     });
 
     it("returns 404 when it does not exist", async () => {

@@ -13,7 +13,7 @@ export async function createPostDraft(idea) {
   const agent = mastra.getAgentById(ID);
 
   const response = await agent.generate(
-    `Crie um post de blog completo baseado na seguinte ideia:\n\n${idea}`,
+    `Crie um post de blog completo em português brasileiro, estruturado com introdução, desenvolvimento e conclusão, baseado na seguinte ideia:\n\n${idea}`,
     {
       structuredOutput: {
         schema: postContentSchema,
@@ -38,8 +38,12 @@ export async function listPosts({ includeAll = false } = {}) {
   return postRepository.findAllPosts({ includeAll });
 }
 
-export async function findPostById(id) {
-  return postRepository.findPostById(id);
+export async function findPostById(id, options) {
+  return postRepository.findPostById(id, options);
+}
+
+export async function findPublicPostById(id) {
+  return postRepository.findPublicPostById(id);
 }
 
 export async function approvePost(id) {

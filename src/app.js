@@ -2,6 +2,7 @@ import http from "node:http";
 import { sendJson } from "./utils/http.js";
 import { createRouter } from "./utils/router.js";
 import { registerPostRoutes } from "./routes/posts.js";
+import { registerDocsRoutes } from "./routes/docs.js";
 
 export function createApp() {
   const router = createRouter();
@@ -11,6 +12,7 @@ export function createApp() {
   });
 
   registerPostRoutes(router);
+  registerDocsRoutes(router);
 
   return http.createServer(async (request, response) => {
     if (await router.handle(request, response)) {

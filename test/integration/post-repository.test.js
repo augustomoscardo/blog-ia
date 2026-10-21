@@ -29,6 +29,19 @@ describe("post-repository (PostgreSQL)", () => {
     assert.equal(await repository.findPostById("nao-existe"), undefined);
   });
 
+  it("findPublicPostById returns only published and approved posts", async () => {
+    await repository.createPost(buildPost({ id: "draft" }));
+    await repository.createPost(buildPost({ id: "pub" }));
+    await repository.createPost(buildPost({ id: "rej" }));
+    await repository.approvePost("pub");
+    await repository.rejectPost("rej");
+
+    assert.equal((await repository.findPublicPostById("pub")).id, "pub");
+    assert.equal(await repository.findPublicPostById("draft"), undefined);
+    assert.equal(await repository.findPublicPostById("rej"), undefined);
+    assert.equal(await repository.findPublicPostById("missing"), undefined);
+  });
+
   it("approvePost sets approved_at and published_at", async () => {
     await repository.createPost(buildPost({ id: "a" }));
 
@@ -55,10 +68,24 @@ describe("post-repository (PostgreSQL)", () => {
     assert.equal(await repository.rejectPost("x"), undefined);
   });
 
-  it("findAllPosts without includeAll returns only published and non-rejected posts", async () => {
+  it("findAllPosts without includeAll returns only published, approved, past/current and non-rejected posts", async () => {
     await repository.createPost(buildPost({ id: "draft" }));
     await repository.createPost(buildPost({ id: "published" }));
     await repository.createPost(buildPost({ id: "rejected" }));
+    await repository.createPost(
+      buildPost({
+        id: "future",
+        published_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        approved_at: new Date().toISOString(),
+      }),
+    );
+    await repository.createPost(
+      buildPost({
+        id: "unapproved-published",
+        published_at: new Date().toISOString(),
+        approved_at: null,
+      }),
+    );
     await repository.approvePost("published");
     await repository.rejectPost("rejected");
 

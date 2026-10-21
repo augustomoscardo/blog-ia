@@ -7,6 +7,7 @@ describe("post-service", () => {
   const repository = {
     findAllPosts: mock.fn(),
     findPostById: mock.fn(),
+    findPublicPostById: mock.fn(),
     approvePost: mock.fn(),
     rejectPost: mock.fn(),
     createPost: mock.fn(async (post) => post),
@@ -15,9 +16,9 @@ describe("post-service", () => {
   let service;
 
   before(async () => {
-    mock.module(srcUrl("repositories/post-repository.js"), { exports: repository });
+    mock.module(srcUrl("repositories/post-repository.js"), { namedExports: repository });
     mock.module(srcUrl("mastra/index.js"), {
-      exports: { mastra: { getAgentById: () => ({ generate }) } },
+      namedExports: { mastra: { getAgentById: () => ({ generate }) } },
     });
 
     service = await import("../../src/services/post-service.js");
@@ -79,12 +80,14 @@ describe("post-service", () => {
     assert.deepEqual(repository.findAllPosts.mock.calls[1].arguments[0], { includeAll: false });
   });
 
-  it("findPostById, approvePost and rejectPost delegate to the repository", async () => {
+  it("findPostById, findPublicPostById, approvePost and rejectPost delegate to the repository", async () => {
     repository.findPostById.mock.mockImplementation(async (id) => ({ id }));
+    repository.findPublicPostById.mock.mockImplementation(async (id) => ({ id, public: true }));
     repository.approvePost.mock.mockImplementation(async (id) => ({ id, approved: true }));
     repository.rejectPost.mock.mockImplementation(async (id) => ({ id, rejected: true }));
 
     assert.deepEqual(await service.findPostById("a"), { id: "a" });
+    assert.deepEqual(await service.findPublicPostById("a"), { id: "a", public: true });
     assert.deepEqual(await service.approvePost("b"), { id: "b", approved: true });
     assert.deepEqual(await service.rejectPost("c"), { id: "c", rejected: true });
   });

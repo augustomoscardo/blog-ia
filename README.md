@@ -32,18 +32,14 @@ src/
 
 Veja `.env.example`.
 
-| Variável | Descrição | Padrão |
-| --- | --- | --- |
-| `API_PORT` | Porta do servidor | `3000` (`3333` na imagem Docker) |
-| `API_HOST` | Host de bind | `localhost` (`0.0.0.0` na imagem Docker) |
-| `API_PROTOCOL` | Apenas usado no log de inicialização | `http` |
-| `DATABASE_URL` | Connection string do PostgreSQL (**obrigatória**) | — |
-| `API_KEY` | Chave Bearer para rotas protegidas | — |
-| `OPENAI_API_KEY` | Chave da OpenAI usada pelo Mastra para o modelo `openai/gpt-4o-mini` (**obrigatória para gerar rascunhos**) | — |
-
-> [!IMPORTANT]
-> Se `API_KEY` não estiver definida, todas as rotas protegidas retornam `403`.
-> `OPENAI_API_KEY` não consta no `.env.example`; adicione-a ao `.env.local`.
+| Variável         | Descrição                                                                                                   | Padrão                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `API_PORT`       | Porta do servidor                                                                                           | `3000` (`3333` na imagem Docker)         |
+| `API_HOST`       | Host de bind                                                                                                | `localhost` (`0.0.0.0` na imagem Docker) |
+| `API_PROTOCOL`   | Apenas usado no log de inicialização                                                                        | `http`                                   |
+| `DATABASE_URL`   | Connection string do PostgreSQL (**obrigatória**)                                                           | —                                        |
+| `API_KEY`        | Chave Bearer para autenticação opcional                                                                     | —                                        |
+| `OPENAI_API_KEY` | Chave da OpenAI usada pelo Mastra para o modelo `openai/gpt-4o-mini` (**obrigatória para gerar rascunhos**) | —                                        |
 
 ## Setup local
 
@@ -77,48 +73,47 @@ A API sobe em `http://localhost:3333` (ou conforme `API_PORT`). Ao iniciar, as m
 
 ### Scripts
 
-| Script | Descrição |
-| --- | --- |
-| `npm run dev` | Servidor com hot reload usando `.env.local` |
-| `npm run env:setup` | Copia `.env.example` para `.env.local` |
-| `npm run local:setup` | `env:setup` + `infra:up` + `migrate:up` |
+| Script                            | Descrição                                        |
+| --------------------------------- | ------------------------------------------------ |
+| `npm run dev`                     | Servidor com hot reload usando `.env.local`      |
+| `npm run env:setup`               | Copia `.env.example` para `.env.local`           |
+| `npm run local:setup`             | `env:setup` + `infra:up` + `migrate:up`          |
 | `npm run infra:up` / `infra:down` | Sobe/derruba o PostgreSQL (`docker-compose.yml`) |
-| `npm run migrate:up` | Aplica todas as migrations |
-| `npm run migrate:down` | Reverte todas as migrations (`migrate 0`) |
-| `npm run lint` | Lint com oxlint |
-| `npm test` | Todos os testes (unit + integração + e2e) |
-| `npm run test:unit` | Apenas testes unitários (sem banco) |
-| `npm run test:integration` | Testes de integração (repositório + PostgreSQL) |
-| `npm run test:e2e` | Testes e2e HTTP com supertest |
-| `npm run test:watch` | Testes unitários em modo watch |
-| `npm run test:coverage` | Todos os testes com relatório de cobertura |
-| `npm run format` / `format:check` | Formata / verifica formatação com oxfmt |
-| `npm run commitlint` | Valida a mensagem do último commit |
-| `npm run docker:build` | Build da imagem `blog-ia:latest` |
-| `npm run docker:run` | Executa a imagem na rede `blog-network` |
+| `npm run migrate:up`              | Aplica todas as migrations                       |
+| `npm run migrate:down`            | Reverte todas as migrations (`migrate 0`)        |
+| `npm run lint`                    | Lint com oxlint                                  |
+| `npm test`                        | Todos os testes (unit + integração + e2e)        |
+| `npm run test:unit`               | Apenas testes unitários (sem banco)              |
+| `npm run test:integration`        | Testes de integração (repositório + PostgreSQL)  |
+| `npm run test:e2e`                | Testes e2e HTTP com supertest                    |
+| `npm run test:watch`              | Testes unitários em modo watch                   |
+| `npm run test:coverage`           | Todos os testes com relatório de cobertura       |
+| `npm run format` / `format:check` | Formata / verifica formatação com oxfmt          |
+| `npm run commitlint`              | Valida a mensagem do último commit               |
+| `npm run docker:build`            | Build da imagem `blog-ia:latest`                 |
+| `npm run docker:run`              | Executa a imagem na rede `blog-network`          |
 
 ## Endpoints
 
 Todas as respostas são JSON. Sucesso: `{ "data": ... }`; erro: `{ "message": "..." }`.
 
-| Método | Rota | Auth | Descrição |
-| --- | --- | --- | --- |
-| `GET` | `/` | — | Health check simples (`{"message":"Hello World"}`) |
-| `GET` | `/posts` | — | Lista posts (somente os publicados/aprovados) |
-| `GET` | `/posts?include=all` | Bearer | Lista todos os posts, incluindo rascunhos e rejeitados |
-| `GET` | `/posts/:id` | — | Busca um post por id |
-| `POST` | `/posts/draft` (alias `/posts/drafts`) | — | Gera um rascunho com IA a partir de uma ideia |
-| `PATCH` | `/posts/:id/approve` | — | Aprova um post |
-| `DELETE` | `/posts/:id/reject` | — | Rejeita um post |
-
-Autenticação (quando exigida): header `Authorization: Bearer <API_KEY>`.
+| Método   | Rota                                   | Auth | Descrição                                                       |
+| -------- | -------------------------------------- | ---- | --------------------------------------------------------------- |
+| `GET`    | `/`                                    | —    | Health check simples (`{"message":"Hello World"}`)              |
+| `GET`    | `/posts`                               | —    | Lista posts públicos (publicados, aprovados e não rejeitados)   |
+| `GET`    | `/posts?include=all`                   | —    | Lista todos os posts, incluindo rascunhos e rejeitados          |
+| `GET`    | `/posts/:id`                           | —    | Busca um post público por id (404 para rascunhos ou rejeitados) |
+| `POST`   | `/posts/draft` (alias `/posts/drafts`) | —    | Gera um rascunho com IA a partir de uma ideia                   |
+| `PATCH`  | `/posts/:id/approve`                   | —    | Aprova um post                                                  |
+| `DELETE` | `/posts/:id/reject`                    | —    | Rejeita um post                                                 |
+| `GET`    | `/api/docs`                            | —    | Documentação Swagger UI da API                                  |
+| `GET`    | `/api/docs/json`                       | —    | Especificação OpenAPI 3 em JSON                                 |
 
 ### Códigos de status
 
 - `200` sucesso · `201` rascunho criado
 - `400` JSON inválido ou `idea` ausente
-- `403` `include=all` sem API key válida
-- `404` post ou rota não encontrada
+- `404` post não encontrado ou não público / rota não encontrada
 - `500` erro interno / falha na geração
 
 ### Exemplos
@@ -129,12 +124,11 @@ curl -X POST http://localhost:3333/posts/draft \
   -H "Content-Type: application/json" \
   -d '{"idea": "Como começar com Node.js"}'
 
-# Listar posts
+# Listar posts públicos
 curl http://localhost:3333/posts
 
-# Listar todos (requer API key)
-curl "http://localhost:3333/posts?include=all" \
-  -H "Authorization: Bearer $API_KEY"
+# Listar todos os posts
+curl "http://localhost:3333/posts?include=all"
 
 # Buscar, aprovar e rejeitar
 curl http://localhost:3333/posts/<id>
@@ -165,11 +159,11 @@ Exemplo de post retornado:
 
 Usam o test runner nativo do Node.js (`node --test`) e [supertest](https://github.com/ladjs/supertest) nos testes e2e. Ficam em `test/`:
 
-| Tipo | Pasta | O que cobre |
-| --- | --- | --- |
-| Unitário | `test/unit` | router, helpers HTTP, auth e `post-service` (repositório e Mastra mockados com `mock.module`) |
-| Integração | `test/integration` | `post-repository` e migrations contra um PostgreSQL real |
-| E2E | `test/e2e` | todas as rotas via supertest, com banco real e a chamada à OpenAI mockada |
+| Tipo       | Pasta              | O que cobre                                                                                   |
+| ---------- | ------------------ | --------------------------------------------------------------------------------------------- |
+| Unitário   | `test/unit`        | router, helpers HTTP, auth e `post-service` (repositório e Mastra mockados com `mock.module`) |
+| Integração | `test/integration` | `post-repository` e migrations contra um PostgreSQL real                                      |
+| E2E        | `test/e2e`         | todas as rotas via supertest, com banco real e a chamada à OpenAI mockada                     |
 
 Os testes de integração e e2e precisam do PostgreSQL no ar (`npm run infra:up`). Eles usam um banco separado (`blog_test`), criado e migrado automaticamente, para não tocar nos dados de desenvolvimento. Para usar outro banco, defina `DATABASE_URL_TEST`. Nenhum teste chama a OpenAI, então `OPENAI_API_KEY` não é necessária.
 
@@ -242,4 +236,3 @@ O servidor trata `SIGINT`/`SIGTERM` com shutdown gracioso (fecha o servidor HTTP
 ## Licença
 
 ISC
-

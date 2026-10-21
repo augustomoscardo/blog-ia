@@ -4,22 +4,41 @@ export async function findAllPosts({ includeAll = false } = {}) {
   const { rows } = await pool.query(`
 		SELECT id, title, content, published_at, created_at, approved_at, rejected_at
 		FROM posts
-		${includeAll ? "" : "WHERE published_at IS NOT NULL AND rejected_at IS NULL"}
+		${
+      includeAll
+        ? ""
+        : `WHERE published_at IS NOT NULL
+		       AND published_at <= NOW()
+		       AND approved_at IS NOT NULL
+		       AND rejected_at IS NULL`
+    }
 		ORDER BY created_at DESC
 	`);
 
   return rows;
 }
 
-export async function findPostById(id) {
+export async function findPostById(id, { publicOnly = false } = {}) {
+  const whereClause = publicOnly
+    ? `WHERE id = $1
+		     AND published_at IS NOT NULL
+		     AND published_at <= NOW()
+		     AND approved_at IS NOT NULL
+		     AND rejected_at IS NULL`
+    : "WHERE id = $1";
+
   const { rows } = await pool.query(
     `SELECT id, title, content, published_at, created_at, approved_at, rejected_at
 		 FROM posts
-		 WHERE id = $1`,
+		 ${whereClause}`,
     [id],
   );
 
   return rows[0];
+}
+
+export async function findPublicPostById(id) {
+  return findPostById(id, { publicOnly: true });
 }
 
 export async function approvePost(id) {

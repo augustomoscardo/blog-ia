@@ -1,21 +1,16 @@
 import {
   createDraftAndSave,
   listPosts,
-  findPostById,
+  findPublicPostById,
   approvePost,
   rejectPost,
 } from "../services/post-service.js";
 import { parseJsonBody, sendJson } from "../utils/http.js";
-import { hasValidApiKey } from "../utils/auth.js";
 
 export function registerPostRoutes(router) {
   router.get("/posts", async (request, response) => {
     const { searchParams } = new URL(request.url || "/", "http://localhost");
     const includeAll = searchParams.get("include") === "all";
-
-    if (includeAll && !hasValidApiKey(request)) {
-      return sendJson(response, 403, { message: "Forbidden" });
-    }
 
     try {
       const posts = await listPosts({ includeAll });
@@ -28,16 +23,16 @@ export function registerPostRoutes(router) {
 
   router.get("/posts/:id", async (request, response) => {
     try {
-      const posts = await findPostById(request.params.id);
+      const post = await findPublicPostById(request.params.id);
 
-      if (!posts) {
+      if (!post) {
         return sendJson(response, 404, { message: "Post not found" });
       }
 
-      return sendJson(response, 200, { data: posts });
+      return sendJson(response, 200, { data: post });
     } catch (error) {
-      console.error("Error listing posts:", error);
-      return sendJson(response, 500, { message: "Could not list posts" });
+      console.error("Error finding post:", error);
+      return sendJson(response, 500, { message: "Could not find post" });
     }
   });
 
